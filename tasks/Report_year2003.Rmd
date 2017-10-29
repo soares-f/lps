@@ -1,0 +1,115 @@
+---
+title: "Urban Accidents in the City of Porto Alegre"
+author: "Felipe Soares"
+date: "October 28, 2017"
+output:
+  html_document: default
+  pdf_document:
+    number_sections: yes
+geometry: margin=1.5in, top=0.5in, bottom=0.5in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+The city of Porto Alegre provides several datasets regarding  the urban accidents within the city limits. For this assignment, the chosen dataset refers to the year of 2003, and the following research question will be answered:
+* What is the time of the day with most accidents?
+For this task, the main features of interest in the dataset are:
+* Row number - just for the sake of couting the cases
+* FX_HORA - This feature refers to the interval regarding the time of the day. I will discretize the data based on this feature, since using non-discretized data would be troublesome.
+* DATA_HORA - Just in case I decided to extract the date part from this datetime feature if I would perform an ANOVA or Kruskal-Wallis test to analyse differences. 
+
+# Analysis
+
+The first step is to download the data and load dplyr package:
+```{r, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+URL <- "http://www.opendatapoa.com.br/storage/f/2013-11-06T17%3A38%3A06.476Z/acidentes-2003.csv"
+df <- read_delim(URL, delim=";")
+```
+
+Then we need to summarize our data for the next steps. A new column was created to store the FX_HORA variable as factor, as well as the date part of DATA_HORA. We then group the data by hour and only_date, summarizing the records by counting them and storing in the total variable:
+
+```{r}
+df_hour <- df %>% mutate(hour = as.factor(FX_HORA), only_date = as.factor(as.Date(DATA_HORA))) %>% group_by(hour, only_date) %>% summarize (total = n())
+```
+
+
+We now show the bar plot with the total amount of accidents stratified by hour:
+```{r fig.width=10}
+barplot(table(df$FX_HORA),xlab = "Hour of the day", ylab = "Sum of accidents", ylim=c(0,2000))
+
+```
+From this plot we may infer that 18.00 is the time with most accidents, however, we should also evaluate data dispersion. 
+
+
+To give a better idea about the data distribution acccording hour, we can draw a Boxplot:
+```{r fig.width=10}
+boxplot(total ~ hour, data=df_hour, xlab = "Hour of the day", ylab = "Count of accidents per day")
+
+```
+From this picture we can see that at 18.00 seems to be the time that with a larger number of accidents. However, since we are dealing with a subset of data (just the year of 2003), and that we can assume that not all accidents withing the city limits are reported to the authorities, we must treat this data as a sample of the whole population of accidents. Thus, we cannot draw any conclusion just by comparing averages of medians. A proper statistical test should be carried out to identify if there is any significant difference.  
+
+The fist possible test for this case would be a One-Way ANOVA, however, as we can see in the aforementioned plot, the groups do not present homogenity of variance, which violates ANOVA assumptions. To remedy this, one could use a non-parametric test such as Kruskal-Wallis or Friedman test (blocked by day), however, also looking at the previous picture, we can see that there are groups of hours highly correlated, which also violates the assumption of independence among groups.  
+
+Since we are dealing with counts, a general linear model (GLM) for Poisson regression would be a more appropriate way of modelling this data. 
+  
+  
+
+Building GLM model for Poisson regression with log linking function:
+
+```{r}
+model.pois <- glm(total ~ hour, data=df_hour, family=poisson(link=log))
+summary(model.pois)
+```
+By looking at the summary of the GLM, we can notice that for the first hours, and also the last one, the regression coefficients are not significant, meaning that they do not contribute to the estimation of accidents. In addition, Intercept present a high level of significance, which can be interpreted as the baseline occurence of accidents that are not dependent on the time of the day. The coefficient of the 18.00 is greater than all the other ones, further indicating that this is the time of the day with more accidents.  
+
+We now need to evaluate if this GLM describes well our observations. For this we will perform a Chi-squared test to evaluate the goodness of fit (GOF):
+
+```{r}
+gof <- 1 - pchisq(summary(model.pois)$deviance, summary(model.pois)$df.residual)
+gof
+```
+Since there is not sufficient evidence to reject the null hypothesis that our model is not adequate, we can assume that our GLM is capable of modeling this scenario.  
+
+
+Finally, we can now evaluate the prediction means for our GLM model and their standard errors (SE):
+```{r}
+nd <- data.frame(hour=levels(df_hour$hour))
+pred_means <- cbind(nd, Mean = predict(model.pois, newdata=nd, type="response"), SE = predict(model.pois, newdata=nd, type="response", se.fit=T)$se.fit)
+pred_means
+```
+
+To have a better understanding we can draw confidence intervals for each hour and compare them in a unique plot:
+
+```{r}
+library(lattice)
+lower <- pred_means$Mean - 1.96* pred_means$SE
+upper <- pred_means$Mean + 1.96* pred_means$SE
+df_cis <- data.frame(hour = pred_means$hour, lower = lower, upper = upper)
+# ensure correct order of hours
+df_cis$hour <- factor(df_cis$hour, levels=df_cis$hour[order(levels(df_cis$hour))])
+bwplot(lower+upper~hour,data=df_cis, xlab = "Hour of the day", ylab = "Prediction of accidents per day")
+```
+
+To be more thorough, we should do a multiple comparison of means for the pairs of hours and then perform a p-value correction based on the number of comparisons made (which would be 17 for the 18.00), however, from the previous plot we can easily see that 18.00 has indeed the most number of accidents per day considering data variability.
+
+# Conclusion
+
+The time of the day with most accidents is at 18.00, which can be related to rush hour. 
+
+# Remarks 
+
+In this dataset only the accidents are reported. Thus, we should include the "non-accident" events to make our prediction model more correct, since we cannot expect that accidents will always happen. For that matter, the following code snippet could be used:
+```{r eval=FALSE}
+df_hour <- df %>% mutate(hour = as.factor(FX_HORA), only_date = as.factor(as.Date(DATA_HORA))) %>% group_by(hour, only_date) %>% summarize (total = n())
+df_tmp <- merge(x = levels(df_hour$hour), y = levels(df_hour$only_date), by = NULL)
+df_tmp <- cbind(df_tmp, rep(0,nrow(df_tmp)))
+names(df_tmp) <- c("hour","only_date","total")
+df_hour <- merge(x = df_hour, y = df_tmp, all = TRUE) %>% group_by(hour, only_date) %>% summarize (total = sum(total))
+```
+Then all evaluations should be made with the df_hour. I did not use this approach since by including zeros in the dataset would change data distribution, with a high prevalence of zeros. This would make analysis more extensive, since a "pure" poisson regression would not be adequate, requiring a zero-inflated poission regression, which is more complicated.  
+In addition, confidence intervals were estimated based on GLM results, which can be misleading. A more precise way would be to perform a bootstraping and get confidence estimates from that. 
