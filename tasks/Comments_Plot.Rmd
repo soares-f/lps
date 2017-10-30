@@ -1,0 +1,38 @@
+---
+title: "Comments about plot"
+author: "Felipe Soares"
+date: "October 30, 2017"
+output:
+  html_document: default
+  pdf_document:
+    number_sections: yes
+geometry: margin=1.5in, top=0.5in, bottom=0.5in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Displaying image. Source: http://www.sciencedirect.com/science/article/pii/S0959652617309605
+
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::include_graphics('https://ars.els-cdn.com/content/image/1-s2.0-S0959652617309605-egi10S6KBKLZR7_lrg.jpg')
+```
+"Pareto chart of ESPs’ compliance with Criterion I."  
+  
+  
+
+
+After analyzing this plot I’ve found the following possible issues:  
+
+* Lack of information in the vertical axis: There is no information about the nature of the variable in the Y-axis, just the numerical figures. The authors should have included a title for those values.  
+
+* Dashed line: The color for this line is not adequate. For the first bars of the plot it is ok, since it is possible to identify it. However, for the rest of  the plot, the line is confused with the white background, requiring effort from the reader to see it.  
+
+* Horizontal labels: There are 2 group labels that are not completely displayed in the plot, due to string lenght. For this case, it could be better to give numbers for each bar and display an additional legend with the full strings contents.  
+
+* Resolution: This figure has a really poor resolution. Authors should have provided a figure with a better resolution, preferably a vectorized one.
+
+
