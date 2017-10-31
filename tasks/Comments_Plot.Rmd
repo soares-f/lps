@@ -14,13 +14,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Displaying image. Source: http://www.sciencedirect.com/science/article/pii/S0959652617309605
+Source: http://www.sciencedirect.com/science/article/pii/S0959652617309605
 
-```{r, message=FALSE, warning=FALSE}
-library(knitr)
-knitr::include_graphics('https://ars.els-cdn.com/content/image/1-s2.0-S0959652617309605-egi10S6KBKLZR7_lrg.jpg')
-```
-"Pareto chart of ESPs’ compliance with Criterion I."  
+
+![Pareto chart of ESPs’ compliance with Criterion I.](https://ars.els-cdn.com/content/image/1-s2.0-S0959652617309605-egi10S6KBKLZR7_lrg.jpg)
+
+ 
   
   
 
