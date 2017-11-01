@@ -38,6 +38,7 @@ pred_means <- cbind(nd, Mean = predict(model.pois, newdata=nd, type="response"),
 
 ```{r}
 library(ggplot2)
+library(lattice)
 lower <- pred_means$Mean - 1.96* pred_means$SE
 upper <- pred_means$Mean + 1.96* pred_means$SE
 df_cis <- data.frame(hour = pred_means$hour, lower = lower, upper = upper, mea = pred_means$Mean)
@@ -53,6 +54,6 @@ ggplot(df_cis, aes(x=hour, y=mea, group=1)) +
       ) + 
     theme(plot.title = element_text(hjust = 0.5, margin = margin(t = 0, r = 0, b = 10, l = 0)))+
     scale_y_continuous(breaks=c(seq(0:6))) 
-#bwplot(lower+upper~hour,data=df_cis, xlab = "Hour of the day", ylab = "Prediction of accidents per day")
+bwplot(lower+upper~hour,data=df_cis, xlab = "Hour of the day", ylab = "Prediction of accidents per day")
 ```
 
