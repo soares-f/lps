@@ -1,0 +1,58 @@
+---
+title: "Plot corrected - ggplot"
+author: "Felipe Soares"
+date: "October 31, 2017"
+output:
+  html_document: default
+  pdf_document:
+    number_sections: yes
+geometry: margin=1.5in, top=0.5in, bottom=0.5in
+---
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+library(readr)
+library(dplyr)
+URL <- "http://www.opendatapoa.com.br/storage/f/2013-11-06T17%3A38%3A06.476Z/acidentes-2003.csv"
+df <- read_delim(URL, delim=";")
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+df_hour <- df %>% mutate(hour = as.factor(FX_HORA), only_date = as.factor(as.Date(DATA_HORA))) %>% group_by(hour, only_date) %>% summarize (total = n())
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+model.pois <- glm(total ~ hour, data=df_hour, family=poisson(link=log))
+#summary(model.pois)
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+nd <- data.frame(hour=levels(df_hour$hour))
+pred_means <- cbind(nd, Mean = predict(model.pois, newdata=nd, type="response"), SE = predict(model.pois, newdata=nd, type="response", se.fit=T)$se.fit)
+```
+
+
+
+```{r}
+library(ggplot2)
+lower <- pred_means$Mean - 1.96* pred_means$SE
+upper <- pred_means$Mean + 1.96* pred_means$SE
+df_cis <- data.frame(hour = pred_means$hour, lower = lower, upper = upper, mea = pred_means$Mean)
+# ensure correct order of hours
+df_cis$hour <- factor(df_cis$hour, levels=df_cis$hour[order(levels(df_cis$hour))])
+ggplot(df_cis, aes(x=hour, y=mea, group=1)) +
+    geom_errorbar(width=.4, size=0.6, aes(ymin=lower, ymax=upper), color="#BCB8B7") +
+    geom_point(size=1.4) + theme_bw() + 
+    coord_cartesian(ylim=c(0,6)) + labs(
+      title="Predicted average of accidents in POA according the hour of the day",
+      x = "Hour of the day",
+      y = "Number of accidents"
+      ) + 
+    theme(plot.title = element_text(hjust = 0.5, margin = margin(t = 0, r = 0, b = 10, l = 0)))+
+    scale_y_continuous(breaks=c(seq(0:6))) 
+#bwplot(lower+upper~hour,data=df_cis, xlab = "Hour of the day", ylab = "Prediction of accidents per day")
+```
+
